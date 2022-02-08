@@ -1,0 +1,60 @@
+name: Prefect Recursive Register
+author: Aldwyn Cabarrubias
+description: Enable the auto-registration of Prefect flows recursively. Limited to Kubernetes (EKS) run config andd Docker (ECR) storage for now.
+branding:
+  icon: cloud-lightning
+  color: blue
+
+inputs:
+  prefect-project-name:
+    description: Prefect project name
+    required: true
+  k8s-job-template-path:
+    description: Kubernetes Job template path
+    required: false
+  enable-dask-executor:
+    description: Whether to enable DaskExecutor
+    required: false
+    default: "false"
+  docker-storage-kwargs:
+    description: Docker storage keyword arguments
+    required: true
+  
+
+runs:
+  using: composite
+  steps:
+    - name: Parse docker-storage-kwargs YAML
+      id: parse-docker-storage-kwargs
+      uses: mikefarah/yq@master
+      with:
+        cmd: echo '${{ inputs.docker-storage-kwargs }}' | yq -o=json eval '.' -
+
+    - name: Get pip cache dir
+      id: pip-cache
+      shell: bash
+      run: |
+        echo "::set-output name=dir::$(pip cache dir)"
+
+    - uses: actions/cache@v2
+      with:
+        path: ${{ steps.pip-cache.outputs.dir }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: ${{ runner.os }}-pip-
+
+    - name: Build base Docker image
+      shell: bash
+      run: docker build -t prefect-base .
+
+    - name: Dockerize and register Prefect flows
+      shell: bash
+      run: |
+        pip install -r requirements.txt
+
+        kwargs_compressed=$(echo '${{ steps.parse-docker-storage-kwargs.outputs.result }}' | jq -c)
+        echo "$kwargs_compressed"
+
+        python3 ${{ github.action_path }}/index.py \
+          --project ${{ inputs.prefect-project-name }} \
+          --path ${{ github.workspace }} \
+          --docker-storage-kwargs "$kwargs_compressed"
