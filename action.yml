@@ -49,12 +49,17 @@ runs:
     - name: Dockerize and register Prefect flows
       shell: bash
       run: |
-        pip install -r requirements.txt
+        # pip install -r requirements.txt
 
         kwargs_compressed=$(echo '${{ steps.parse-docker-storage-kwargs.outputs.result }}' | jq -c)
         echo "$kwargs_compressed"
 
-        python3 ${{ github.action_path }}/index.py \
-          --project ${{ inputs.prefect-project-name }} \
-          --path ${{ github.workspace }} \
-          --docker-storage-kwargs "$kwargs_compressed"
+        docker run --rm \
+          -v "${{ github.action_path }}:/tmp/prefect-action/" \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v /home/runner/.docker/:/root/.docker/ \
+          -e PREFECT__CLOUD__API_KEY=$PREFECT__CLOUD__API_KEY \
+          prefect-base python3 /tmp/prefect-action/index.py \
+            --project ${{ inputs.prefect-project-name }} \
+            --path /app \
+            --docker-storage-kwargs "$kwargs_compressed"

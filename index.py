@@ -26,15 +26,15 @@ def get_default_run_config(labels: List[str] = [], job_template_path: Optional[s
     )
 
 
-def get_default_storage(**kwargs):
-    return Docker(base_image="prefect-base", extra_dockerfile_commands="COPY . .", local_image=True, **kwargs)
+def get_default_storage(script_path, **kwargs):
+    return Docker(base_image="prefect-base", local_image=True, stored_as_script=True, path=script_path, **kwargs)
 
 
-def build_dockerized_flows(flows: List[FlowLike], dask, docker_storage_kwargs):
+def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_storage_kwargs):
     for flow in flows:
         flow.validate()
         flow.run_config = get_default_run_config(dask)
-        flow.storage = get_default_storage(**docker_storage_kwargs)
+        flow.storage = get_default_storage(script_path, **docker_storage_kwargs)
         flow.executor = get_default_executor()
 
 
@@ -116,7 +116,8 @@ def register(
         click.echo(f"Processing {source.location!r}:")
         
         # Major extension to register_internal goes here
-        build_dockerized_flows(flows, dask, json.loads(docker_storage_kwargs))
+        build_dockerized_flows(flows, dask, script_path=source.location,
+                               docker_storage_kwargs=json.loads(docker_storage_kwargs))
 
         stats += build_and_register(
             client, flows, project_id, labels=labels, force=force, schedule=schedule
