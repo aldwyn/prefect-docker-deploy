@@ -1,0 +1,60 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prefect-agent-role
+rules:
+  - apiGroups: ["batch", "extension"]
+    resources: ["jobs"]
+    verbs: ["*"]
+  - apiGroups: ["*"]
+    resources: ["events", "pods"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prefect-agent-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prefect-agent-role
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prefect-cloud-api-token
+data:
+  PREFECT__CLOUD__API_KEY: BASE64_ENCODED_PREFECT__CLOUD__API_KEY
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prefect-agent
+spec:
+  containers:
+    - image: prefecthq/prefect
+      imagePullPolicy: Always
+      name: prefect-agent
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      args:
+        - prefect agent kubernetes start
+      command:
+        - /bin/sh
+        - -c
+      envFrom:
+        - secretRef:
+            name: prefect-cloud-api-token
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
