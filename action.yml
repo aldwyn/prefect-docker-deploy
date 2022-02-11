@@ -1,6 +1,6 @@
 name: Prefect Recursive Register
 author: Aldwyn Cabarrubias
-description: Enable the auto-registration of Prefect flows recursively. Limited to Kubernetes (EKS) run config andd Docker (ECR) storage for now.
+description: Enable the auto-registration of Prefect flows recursively. Limited to Kubernetes (EKS) run config and Docker (ECR) storage for now.
 branding:
   icon: cloud-lightning
   color: blue
@@ -9,26 +9,25 @@ inputs:
   prefect-project-name:
     description: Prefect project name
     required: true
-  k8s-job-template-path:
-    description: Kubernetes Job template path
-    required: false
-  enable-dask-executor:
-    description: Whether to enable DaskExecutor
-    required: false
-    default: "false"
-  docker-storage-kwargs:
-    description: Docker storage keyword arguments
+  # k8s-job-template-path:
+  #   description: Kubernetes Job template path
+  #   required: false
+  # enable-dask-executor:
+  #   description: Whether to enable DaskExecutor
+  #   required: false
+  #   default: "false"
+  docker-registry-url:
+    description: Docker registry URL
     required: true
-  
 
 runs:
   using: composite
   steps:
-    - name: Parse docker-storage-kwargs YAML
-      id: parse-docker-storage-kwargs
-      uses: mikefarah/yq@master
-      with:
-        cmd: echo '${{ inputs.docker-storage-kwargs }}' | yq -o=json eval '.' -
+    # - name: Parse docker-storage-kwargs YAML
+    #   id: parse-docker-storage-kwargs
+    #   uses: mikefarah/yq@master
+    #   with:
+    #     cmd: echo '${{ inputs.docker-storage-kwargs }}' | yq -o=json eval '.' -
 
     - name: Get pip cache dir
       id: pip-cache
@@ -51,8 +50,8 @@ runs:
       run: |
         # pip install -r requirements.txt
 
-        kwargs_compressed=$(echo '${{ steps.parse-docker-storage-kwargs.outputs.result }}' | jq -c)
-        echo "$kwargs_compressed"
+        # kwargs_compressed=$(echo '${{ steps.parse-docker-storage-kwargs.outputs.result }}' | jq -c)
+        # echo "$kwargs_compressed"
 
         docker run --rm \
           -v "${{ github.action_path }}:/tmp/prefect-action/" \
@@ -62,4 +61,5 @@ runs:
           prefect-base python3 /tmp/prefect-action/index.py \
             --project ${{ inputs.prefect-project-name }} \
             --path /app \
-            --docker-storage-kwargs "$kwargs_compressed"
+            --docker-registry-url ${{ inputs.docker-registry-url }}
+            # --docker-storage-kwargs "$kwargs_compressed"

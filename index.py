@@ -26,15 +26,20 @@ def get_default_run_config(labels: List[str] = [], job_template_path: Optional[s
     )
 
 
-def get_default_storage(script_path, **kwargs):
-    return Docker(base_image="prefect-base", local_image=True, stored_as_script=True, path=script_path, **kwargs)
+def get_default_storage(script_path, docker_registry_url):
+    return Docker(registry_url=docker_registry_url,
+                  image_name="prefect",
+                  base_image="prefect-base",
+                  local_image=True,
+                  stored_as_script=True,
+                  path=script_path)
 
 
-def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_storage_kwargs):
+def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_registry_url):
     for flow in flows:
         flow.validate()
         flow.run_config = get_default_run_config(dask)
-        flow.storage = get_default_storage(script_path, **docker_storage_kwargs)
+        flow.storage = get_default_storage(script_path, docker_registry_url)
         flow.executor = get_default_executor()
 
 
@@ -63,18 +68,19 @@ def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_stor
     multiple=True,
 )
 @click.option("--dask", help="Whether to use the Dask executor.", default=False, is_flag=True)
-@click.option("--docker-storage-kwargs", help="JSON-formatted Docker storage kwargs", default="{}")
+@click.option("--docker-registry-url", help="Docker registry URL")
 def register(
     project: str,
     paths: List[str],
     modules: List[str],
+    docker_registry_url: str,
     json_paths: List[str] = [],
     names: List[str] = [],
     labels: List[str] = [],
     force: bool = False,
     schedule: bool = True,
     dask: bool = False,
-    docker_storage_kwargs: str = "{}",
+    # docker_storage_kwargs: str = "{}",
 ) -> None:
     """Do a single registration pass, loading, building, and registering the
     requested flows.
@@ -114,10 +120,10 @@ def register(
     stats = Counter(registered=0, errored=0, skipped=0)
     for source, flows in source_to_flows.items():
         click.echo(f"Processing {source.location!r}:")
-        
+
         # Major extension to register_internal goes here
         build_dockerized_flows(flows, dask, script_path=source.location,
-                               docker_storage_kwargs=json.loads(docker_storage_kwargs))
+                               docker_registry_url=docker_registry_url)
 
         stats += build_and_register(
             client, flows, project_id, labels=labels, force=force, schedule=schedule
