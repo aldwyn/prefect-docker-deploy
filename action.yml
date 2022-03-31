@@ -9,6 +9,24 @@ inputs:
   prefect-project-name:
     description: Prefect project name
     required: true
+  create-prefect-project:
+    description: Whether to create project if it does not exist
+    default: "false"
+    required: true
+  project-description:
+    description: A description of the project to be used when creating it
+    required: false
+  docker-registry-url:
+    description: Docker registry URL
+    required: true
+  flows-root-directory:
+    description: The root directory of the Python scripts that have Flow contexts. Default is "."
+    required: true
+    default: "."
+  dockerfile-path:
+    description: Path of the Dockerfile. Default is Dockerfile
+    required: true
+    default: Dockerfile
   # k8s-job-template-path:
   #   description: Kubernetes Job template path
   #   required: false
@@ -16,19 +34,10 @@ inputs:
   #   description: Whether to enable DaskExecutor
   #   required: false
   #   default: "false"
-  docker-registry-url:
-    description: Docker registry URL
-    required: true
 
 runs:
   using: composite
   steps:
-    # - name: Parse docker-storage-kwargs YAML
-    #   id: parse-docker-storage-kwargs
-    #   uses: mikefarah/yq@master
-    #   with:
-    #     cmd: echo '${{ inputs.docker-storage-kwargs }}' | yq -o=json eval '.' -
-
     - name: Get pip cache dir
       id: pip-cache
       shell: bash
@@ -48,10 +57,8 @@ runs:
     - name: Dockerize and register Prefect flows
       shell: bash
       run: |
-        # pip install -r requirements.txt
-
-        # kwargs_compressed=$(echo '${{ steps.parse-docker-storage-kwargs.outputs.result }}' | jq -c)
-        # echo "$kwargs_compressed"
+        docker_workdir=$(docker image inspect prefect-base | jq -r '.[].Config.WorkingDir')
+        flows_root_dir=${docker_workdir%%*(/)}${{ inputs.flows-root-directory }}
 
         docker run --rm \
           -v "${{ github.action_path }}:/tmp/prefect-action/" \
@@ -60,6 +67,7 @@ runs:
           -e PREFECT__CLOUD__API_KEY=$PREFECT__CLOUD__API_KEY \
           prefect-base python3 /tmp/prefect-action/index.py \
             --project ${{ inputs.prefect-project-name }} \
-            --path /app \
-            --docker-registry-url ${{ inputs.docker-registry-url }}
-            # --docker-storage-kwargs "$kwargs_compressed"
+            --create-project ${{ inputs.create-prefect-project }} \
+            --path $flows_root_dir \
+            --docker-registry-url ${{ inputs.docker-registry-url }} \
+            --dockerfile-path ${{ inputs.dockerfile-path }}

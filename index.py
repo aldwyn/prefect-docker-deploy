@@ -1,4 +1,3 @@
-import json
 from collections import Counter
 from typing import List, Optional
 
@@ -7,6 +6,7 @@ from prefect.cli.build_register import (
     click, TerminalError, FlowLike,
     get_project_id, expand_paths, collect_flows, build_and_register
 )
+from prefect.cli.create import project as project_create
 from prefect.executors import DaskExecutor, LocalExecutor
 from prefect.run_configs import KubernetesRun
 from prefect.storage import Docker
@@ -46,6 +46,8 @@ def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_regi
 # modified version of prefect.cli.build_register.register_internal
 @click.command()
 @click.option("--project", help="The name of the Prefect project to register this flow in. Required.")
+@click.option("--create-project", help="Whether to create project if it does not exist", default=False, is_flag=True)
+@click.option("--project-description", help="A description of the project to be used when creating it.")
 @click.option(
     "--path",
     "-p",
@@ -77,6 +79,8 @@ def register(
     json_paths: List[str] = [],
     names: List[str] = [],
     labels: List[str] = [],
+    project_description: str = None,
+    create_project: bool = False,
     force: bool = False,
     schedule: bool = True,
     dask: bool = False,
@@ -103,6 +107,9 @@ def register(
             `register --watch` call.
     """
     client = prefect.Client()
+
+    # Create project if it does not exist
+    project_create(project, project_description, not create_project)
 
     # Determine the project id
     project_id = get_project_id(client, project)

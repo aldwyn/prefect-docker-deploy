@@ -9,8 +9,9 @@ Current support:
 
 Roadmap:
 
-- [ ] Add support for other storages
 - [ ] Replace task result with any cloud-based result (e.g. `S3Result`)
+- [ ] Dask cluster support
+- [ ] Parameterized Dockerfile path
 
 ## Prerequisites for Kubernetes
 
@@ -19,6 +20,7 @@ Roadmap:
 - The Prefect agent pod and its related resources in `prefect-agent.yml` file. Make sure to replace `BASE64_ENCODED_PREFECT__CLOUD__API_KEY`.
 - A private ECR repository for the Dockerized Prefect flows
 - Make sure to include the used IAM role/user in the ConfigMap `aws-auth` of the EKS cluster. Reference: https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html
+- The Dockerfile should be in the root of the repository. (This will change)
 
   ```bash
   kubectl get configmap aws-auth -n kube-system -o yaml
@@ -50,6 +52,7 @@ on:
 env:
   AWS_DEFAULT_REGION: us-east-2
 
+# Mandatory for IAM AssumeWebIdentity
 permissions:
   id-token: write
   contents: write
@@ -86,6 +89,9 @@ jobs:
         env:
           PREFECT__CLOUD__API_KEY: ${{ secrets.PREFECT__CLOUD__API_KEY }}
         with:
-          prefect-project-name: main
+          prefect-project-name: ${{ github.repository }}
+          create-prefect-project: "true"
           docker-registry-url: ${{ steps.authenticate-ecr.outputs.ECR_REGISTRY }}
+          flows-root-directory: .
+          dockerfile-path: Dockerfile
 ```
