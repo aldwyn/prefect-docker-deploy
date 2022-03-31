@@ -71,7 +71,9 @@ def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_regi
 )
 @click.option("--dask", help="Whether to use the Dask executor.", default=False, is_flag=True)
 @click.option("--docker-registry-url", help="Docker registry URL")
+@click.pass_context
 def register(
+    ctx: click.Context,
     project: str,
     paths: List[str],
     modules: List[str],
@@ -109,7 +111,8 @@ def register(
     client = prefect.Client()
 
     # Create project if it does not exist
-    project_create(project, project_description, not create_project)
+    if create_project:
+        project_create.callback(project, project_description, True)
 
     # Determine the project id
     project_id = get_project_id(client, project)
