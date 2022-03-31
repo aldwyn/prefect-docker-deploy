@@ -58,7 +58,7 @@ runs:
       shell: bash
       run: |
         docker_workdir=$(docker image inspect prefect-base | jq -r '.[].Config.WorkingDir')
-        flows_root_dir=${docker_workdir%%*(/)}${{ inputs.flows-root-directory }}
+        flows_root_dir=${docker_workdir%%*(/)}/${{ inputs.flows-root-directory }}
         is_create_project=$([[ "${{ inputs.create-prefect-project }}" == "true" ]] && echo --create-project || echo)
 
         docker run --rm \
