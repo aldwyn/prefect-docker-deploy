@@ -59,6 +59,7 @@ runs:
       run: |
         docker_workdir=$(docker image inspect prefect-base | jq -r '.[].Config.WorkingDir')
         flows_root_dir=${docker_workdir%%*(/)}${{ inputs.flows-root-directory }}
+        is_create_project=$([[ "${{ inputs.create-prefect-project }}" == "true" ]] && echo --create-project || echo)
 
         docker run --rm \
           -v "${{ github.action_path }}:/tmp/prefect-action/" \
@@ -67,6 +68,6 @@ runs:
           -e PREFECT__CLOUD__API_KEY=$PREFECT__CLOUD__API_KEY \
           prefect-base python3 /tmp/prefect-action/index.py \
             --project ${{ inputs.prefect-project-name }} \
-            --create-project ${{ inputs.create-prefect-project }} \
+            $is_create_project \
             --path $flows_root_dir \
             --docker-registry-url ${{ inputs.docker-registry-url }}
