@@ -52,7 +52,7 @@ runs:
 
     - name: Build base Docker image
       shell: bash
-      run: docker build -t prefect-base .
+      run: docker build -t prefect-base -f ${{ inputs.dockerfile-path }} .
 
     - name: Dockerize and register Prefect flows
       shell: bash
@@ -69,5 +69,4 @@ runs:
             --project ${{ inputs.prefect-project-name }} \
             --create-project ${{ inputs.create-prefect-project }} \
             --path $flows_root_dir \
-            --docker-registry-url ${{ inputs.docker-registry-url }} \
-            --dockerfile-path ${{ inputs.dockerfile-path }}
+            --docker-registry-url ${{ inputs.docker-registry-url }}
