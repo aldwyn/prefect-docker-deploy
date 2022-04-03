@@ -48,6 +48,8 @@ def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_regi
 @click.option("--project", help="The name of the Prefect project to register this flow in. Required.")
 @click.option("--create-project", help="Whether to create project if it does not exist", default=False, is_flag=True)
 @click.option("--project-description", help="A description of the project to be used when creating it.")
+@click.option("--dask", help="Whether to use the Dask executor.", default=False, is_flag=True)
+@click.option("--docker-registry-url", help="Docker registry URL")
 @click.option(
     "--path",
     "-p",
@@ -69,11 +71,7 @@ def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_regi
     ),
     multiple=True,
 )
-@click.option("--dask", help="Whether to use the Dask executor.", default=False, is_flag=True)
-@click.option("--docker-registry-url", help="Docker registry URL")
-@click.pass_context
 def register(
-    ctx: click.Context,
     project: str,
     paths: List[str],
     modules: List[str],
@@ -86,9 +84,8 @@ def register(
     force: bool = False,
     schedule: bool = True,
     dask: bool = False,
-    # docker_storage_kwargs: str = "{}",
 ) -> None:
-    """Do a single registration pass, loading, building, and registering the
+    """Do multiple registration pass, loading, building, and registering the
     requested flows.
 
     Args:
@@ -105,8 +102,6 @@ def register(
             be used to avoid unnecessary register calls.
         - schedule (bool, optional): If `True` (default) activates the flow schedule
             upon registering.
-        - in_watch (bool, optional): Whether this call resulted from a
-            `register --watch` call.
     """
     client = prefect.Client()
 
