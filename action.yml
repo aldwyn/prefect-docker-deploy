@@ -80,6 +80,7 @@ runs:
           -e PREFECT__CLOUD__USE_LOCAL_SECRETS=false \
           prefect-base python3 /tmp/prefect-action/index.py \
             $is_create_project \
+            --schedule \
             --project ${{ inputs.prefect-project-name }} \
             --path $flows_root_dir \
             --docker-registry-url ${{ inputs.docker-registry-url }}

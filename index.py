@@ -71,6 +71,16 @@ def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_regi
     ),
     multiple=True,
 )
+@click.option(
+    "--schedule/--no-schedule",
+    help=(
+        "Toggles the flow schedule upon registering. By default, the "
+        "flow's schedule will be activated and future runs will be created. "
+        "If disabled, the schedule will still be attached to the flow but "
+        "no runs will be created until it is activated."
+    ),
+    default=True,
+)
 def register(
     project: str,
     paths: List[str],
