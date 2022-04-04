@@ -16,6 +16,9 @@ inputs:
   project-description:
     description: A description of the project to be used when creating it
     required: false
+  base-docker-image:
+    description: The base Docker image of Prefect to be used. Can be a local or remote Docker image.
+    required: true
   docker-registry-url:
     description: Docker registry URL
     required: true
@@ -23,10 +26,6 @@ inputs:
     description: The root directory of the Python scripts that have Flow contexts. Default is "."
     required: true
     default: "."
-  dockerfile-path:
-    description: Path of the Dockerfile. Default is Dockerfile
-    required: true
-    default: Dockerfile
   # mock-prefect-secrets:
   #   description: YAML key-value dictionary in string format. Use it with a pipe symbol "|" to set a multiline value
   #   required: true
@@ -42,35 +41,12 @@ inputs:
 runs:
   using: composite
   steps:
-    # - name: Parse mock-prefect-secrets YAML
-    #   id: parse-mock-prefect-secrets
-    #   uses: mikefarah/yq@master
-    #   with:
-    #     cmd: echo '${{ inputs.mock-prefect-secrets }}' | yq -o=json eval '.' -
-
-    - name: Get pip cache dir
-      id: pip-cache
-      shell: bash
-      run: |
-        echo "::set-output name=dir::$(pip cache dir)"
-
-    - uses: actions/cache@v2
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-
-    - name: Build base Docker image
-      shell: bash
-      run: docker build -t prefect-base -f ${{ inputs.dockerfile-path }} .
-
     - name: Dockerize and register Prefect flows
       shell: bash
       run: |
         docker_workdir=$(docker image inspect prefect-base | jq -r '.[].Config.WorkingDir')
         flows_root_dir=${docker_workdir%%*(/)}/${{ inputs.flows-root-directory }}
         is_create_project=$([[ "${{ inputs.create-prefect-project }}" == "true" ]] && echo --create-project || echo)
-        # mock_secrets_json=$(echo '${{ steps.parse-mock-prefect-secrets.outputs.result }}' | jq -c)
 
         docker run --rm \
           -v "${{ github.action_path }}:/tmp/prefect-action/" \
