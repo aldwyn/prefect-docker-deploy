@@ -26,10 +26,6 @@ inputs:
     description: The root directory of the Python scripts that have Flow contexts. Default is "."
     required: true
     default: "."
-  # mock-prefect-secrets:
-  #   description: YAML key-value dictionary in string format. Use it with a pipe symbol "|" to set a multiline value
-  #   required: true
-  #   default: '{}'
   # k8s-job-template-path:
   #   description: Kubernetes Job template path
   #   required: false
@@ -49,15 +45,14 @@ runs:
         is_create_project=$([[ "${{ inputs.create-prefect-project }}" == "true" ]] && echo --create-project || echo)
 
         docker run --rm \
-          -v "${{ github.action_path }}:/tmp/prefect-action/" \
+          -v "${{ github.action_path }}/docker_deploy.py:${docker_workdir%%*(/)}/docker_deploy.py" \
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v /home/runner/.docker/:/root/.docker/ \
           -e PREFECT__CLOUD__API_KEY=$PREFECT__CLOUD__API_KEY \
           -e PREFECT__CLOUD__USE_LOCAL_SECRETS=false \
-          prefect-base python3 /tmp/prefect-action/index.py \
+          ${{ inputs.base-docker-image }} python docker_deploy.py \
             $is_create_project \
             --schedule \
             --project ${{ inputs.prefect-project-name }} \
             --path $flows_root_dir \
             --docker-registry-url ${{ inputs.docker-registry-url }}
-            # --mock-secrets "$mock_secrets_json"

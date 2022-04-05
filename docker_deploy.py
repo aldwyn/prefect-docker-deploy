@@ -124,7 +124,7 @@ def register(
 
     # Recursively check for flows
     expanded_paths = expand_paths(paths)
-    print(expanded_paths)
+    click.secho(f"Found flows: {expanded_paths!r}", fg="green")
 
     # Load flows from all files/modules requested
     click.echo("Collecting flows...")
@@ -134,7 +134,7 @@ def register(
     # Log errors as they happen, but only exit once all files have been processed
     stats = Counter(registered=0, errored=0, skipped=0)
     for source, flows in source_to_flows.items():
-        click.echo(f"Processing {source.location!r}:")
+        click.secho(f"Processing {source.location!r}:", fg="yellow")
 
         # Major extension to register_internal goes here
         build_dockerized_flows(flows, dask, script_path=source.location,
