@@ -44,6 +44,8 @@ runs:
         flows_dir=${docker_workdir%%*(/)}/${{ inputs.flows-directory }}
         is_create_project=$([[ "${{ inputs.create-project }}" == "true" ]] && echo --create-project || echo)
 
+        echo $PATH
+        ls -lah /.venv/bin
         docker run --rm \
           -v "${{ github.action_path }}/docker_deploy.py:${docker_workdir%%*(/)}/docker_deploy.py" \
           -v /var/run/docker.sock:/var/run/docker.sock \
