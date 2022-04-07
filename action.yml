@@ -6,10 +6,10 @@ branding:
   color: blue
 
 inputs:
-  prefect-project-name:
+  project-name:
     description: Prefect project name
     required: true
-  create-prefect-project:
+  create-project:
     description: Whether to create project if it does not exist
     default: "false"
     required: true
@@ -22,8 +22,8 @@ inputs:
   docker-registry-url:
     description: Docker registry URL
     required: true
-  flows-root-directory:
-    description: The root directory of the Python scripts that have Flow contexts. Default is "."
+  flows-directory:
+    description: The directory of the Python scripts that have Flow contexts. Default is "."
     required: true
     default: "."
   # k8s-job-template-path:
@@ -40,9 +40,9 @@ runs:
     - name: Dockerize and register Prefect flows
       shell: bash
       run: |
-        docker_workdir=$(docker image inspect ${{ inputs.base-docker-image }} | jq -r '.[].Config.WorkingDir')
-        flows_root_dir=${docker_workdir%%*(/)}/${{ inputs.flows-root-directory }}
-        is_create_project=$([[ "${{ inputs.create-prefect-project }}" == "true" ]] && echo --create-project || echo)
+        # docker_workdir=$(docker image inspect ${{ inputs.base-docker-image }} | jq -r '.[].Config.WorkingDir')
+        # flows_dir=${docker_workdir%%*(/)}/${{ inputs.flows-directory }}
+        is_create_project=$([[ "${{ inputs.create-project }}" == "true" ]] && echo --create-project || echo)
 
         docker run --rm \
           -v "${{ github.action_path }}/docker_deploy.py:${docker_workdir%%*(/)}/docker_deploy.py" \
@@ -53,6 +53,6 @@ runs:
           ${{ inputs.base-docker-image }} python docker_deploy.py \
             $is_create_project \
             --schedule \
-            --project ${{ inputs.prefect-project-name }} \
-            --path $flows_root_dir \
+            --project ${{ inputs.project-name }} \
+            --path ${{ inputs.flows-directory }} \
             --docker-registry-url ${{ inputs.docker-registry-url }}
