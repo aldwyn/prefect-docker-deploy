@@ -40,8 +40,8 @@ runs:
     - name: Dockerize and register Prefect flows
       shell: bash
       run: |
-        # docker_workdir=$(docker image inspect ${{ inputs.base-docker-image }} | jq -r '.[].Config.WorkingDir')
-        # flows_dir=${docker_workdir%%*(/)}/${{ inputs.flows-directory }}
+        docker_workdir=$(docker image inspect ${{ inputs.base-docker-image }} | jq -r '.[].Config.WorkingDir')
+        flows_dir=${docker_workdir%%*(/)}/${{ inputs.flows-directory }}
         is_create_project=$([[ "${{ inputs.create-project }}" == "true" ]] && echo --create-project || echo)
 
         docker run --rm \
@@ -54,5 +54,5 @@ runs:
             $is_create_project \
             --schedule \
             --project ${{ inputs.project-name }} \
-            --path ${{ inputs.flows-directory }} \
+            --path $flows_dir \
             --docker-registry-url ${{ inputs.docker-registry-url }}
