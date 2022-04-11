@@ -26,10 +26,10 @@ def get_default_run_config(labels: List[str] = [], job_template_path: Optional[s
     )
 
 
-def get_default_storage(script_path, docker_registry_url):
-    return Docker(registry_url=docker_registry_url,
-                  image_name="prefect",
-                  base_image="prefect-base",
+def get_default_storage(script_path, image_name, base_image, registry_url):
+    return Docker(registry_url=registry_url,
+                  image_name=image_name,
+                  base_image=base_image,
                   local_image=True,
                   stored_as_script=True,
                   path=script_path)
@@ -44,12 +44,15 @@ def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_regi
 
 
 # modified version of prefect.cli.build_register.register_internal
+# the schedule param has been introduced since Prefect v15.2.0
 @click.command()
 @click.option("--project", help="The name of the Prefect project to register this flow in. Required.")
 @click.option("--create-project", help="Whether to create project if it does not exist", default=False, is_flag=True)
 @click.option("--project-description", help="A description of the project to be used when creating it.")
 @click.option("--dask", help="Whether to use the Dask executor.", default=False, is_flag=True)
 @click.option("--docker-registry-url", help="Docker registry URL")
+@click.option("--docker-base-image", help="Docker base image")
+@click.option("--docker-image-name", help="Docker image name")
 @click.option(
     "--path",
     "-p",
@@ -86,6 +89,8 @@ def register(
     paths: List[str],
     modules: List[str],
     docker_registry_url: str,
+    docker_base_image: str,
+    docker_image_name: str,
     json_paths: List[str] = [],
     names: List[str] = [],
     labels: List[str] = [],
@@ -138,7 +143,9 @@ def register(
 
         # Major extension to register_internal goes here
         build_dockerized_flows(flows, dask, script_path=source.location,
-                               docker_registry_url=docker_registry_url)
+                               base_image=docker_base_image,
+                               image_name=docker_image_name,
+                               registry_url=docker_registry_url)
 
         stats += build_and_register(
             client, flows, project_id, labels=labels, force=force, schedule=schedule

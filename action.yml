@@ -46,6 +46,8 @@ runs:
 
         docker run --rm \
           -v "${{ github.action_path }}/docker_deploy.py:${docker_workdir%%*(/)}/docker_deploy.py" \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v /home/runner/.docker/:/root/.docker/ \
           -e PREFECT__CLOUD__API_KEY=$PREFECT__CLOUD__API_KEY \
           -e PREFECT__CLOUD__USE_LOCAL_SECRETS=false \
           ${{ inputs.base-docker-image }} python docker_deploy.py \
@@ -53,4 +55,5 @@ runs:
             --schedule \
             --project ${{ inputs.project-name }} \
             --path $flows_dir \
-            --docker-registry-url ${{ inputs.docker-registry-url }}
+            --docker-registry-url ${{ inputs.docker-registry-url }} \
+            --base-docker-image ${{ inputs.base-docker-image }}
