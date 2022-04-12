@@ -50,9 +50,9 @@ def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_regi
 @click.option("--create-project", help="Whether to create project if it does not exist", default=False, is_flag=True)
 @click.option("--project-description", help="A description of the project to be used when creating it.")
 @click.option("--dask", help="Whether to use the Dask executor.", default=False, is_flag=True)
+@click.option("--base-image", help="Docker base image")
 @click.option("--docker-registry-url", help="Docker registry URL")
-@click.option("--docker-base-image", help="Docker base image")
-@click.option("--docker-image-name", help="Docker image name")
+@click.option("--docker-registry-image", help="Docker registry output image")
 @click.option(
     "--path",
     "-p",
@@ -88,9 +88,9 @@ def register(
     project: str,
     paths: List[str],
     modules: List[str],
+    base_image: str,
     docker_registry_url: str,
-    docker_base_image: str,
-    docker_image_name: str,
+    docker_registry_image: str,
     json_paths: List[str] = [],
     names: List[str] = [],
     labels: List[str] = [],
@@ -143,8 +143,8 @@ def register(
 
         # Major extension to register_internal goes here
         build_dockerized_flows(flows, dask, script_path=source.location,
-                               base_image=docker_base_image,
-                               image_name=docker_image_name,
+                               base_image=base_image,
+                               registry_image=docker_registry_image,
                                registry_url=docker_registry_url)
 
         stats += build_and_register(

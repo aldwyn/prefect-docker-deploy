@@ -22,6 +22,10 @@ Roadmap:
 - Make sure to include the used IAM role/user in the ConfigMap `aws-auth` of the EKS cluster. Reference: https://docs.aws.amazon.com/eks/latest/userguide/add-user-role.html
 - The Dockerfile should be in the root of the repository. (This will change)
 
+
+## Prerequisites for Docker
+- The executing machine for the BuildKit-run `docker build` command should have Docker installed. This will enable the Prefect to mount the running Docker service and its volume to the multiple registration.
+
   ```bash
   kubectl get configmap aws-auth -n kube-system -o yaml
   ```
