@@ -26,20 +26,23 @@ def get_default_run_config(labels: List[str] = [], job_template_path: Optional[s
     )
 
 
-def get_default_storage(script_path, image_name, base_image, registry_url):
+def get_default_storage(script_path: str, base_image: str, registry_url: str, registry_image: str):
     return Docker(registry_url=registry_url,
-                  image_name=image_name,
+                  image_name=registry_image,
                   base_image=base_image,
                   local_image=True,
                   stored_as_script=True,
                   path=script_path)
 
 
-def build_dockerized_flows(flows: List[FlowLike], dask, script_path, registry_url, registry_image, base_image):
+def build_dockerized_flows(flows: List[FlowLike], dask: bool, script_path: str, registry_url: str, registry_image: str, base_image: str):
     for flow in flows:
         flow.validate()
         flow.run_config = get_default_run_config(dask)
-        flow.storage = get_default_storage(script_path, registry_url, registry_image, base_image)
+        flow.storage = get_default_storage(script_path=script_path,
+                                           base_image=base_image,
+                                           registry_url=registry_url,
+                                           registry_image=registry_image)
         flow.executor = get_default_executor()
 
 
