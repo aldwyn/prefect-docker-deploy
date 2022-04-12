@@ -35,11 +35,11 @@ def get_default_storage(script_path, image_name, base_image, registry_url):
                   path=script_path)
 
 
-def build_dockerized_flows(flows: List[FlowLike], dask, script_path, docker_registry_url):
+def build_dockerized_flows(flows: List[FlowLike], dask, script_path, registry_url, registry_image, base_image):
     for flow in flows:
         flow.validate()
         flow.run_config = get_default_run_config(dask)
-        flow.storage = get_default_storage(script_path, docker_registry_url)
+        flow.storage = get_default_storage(script_path, registry_url, registry_image, base_image)
         flow.executor = get_default_executor()
 
 
