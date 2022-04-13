@@ -10,7 +10,7 @@ inputs:
     description: Prefect project name
     required: true
   docker-storage-kwargs:
-    description: Docker storage kwargs. Refer https://docs.prefect.io/api/latest/storage.html#docker
+    description: Docker storage kwargs in YAML dictionary format. Refer https://docs.prefect.io/api/latest/storage.html#docker
     required: true
   flows-directory:
     description: The directory of the Python scripts that have Flow contexts. Default is "."
@@ -36,9 +36,10 @@ runs:
     - name: Dockerize and register Prefect flows
       shell: bash
       run: |
-        docker_workdir=$(docker image inspect ${{ inputs.base-image }} | jq -r '.[].Config.WorkingDir')
-        flows_dir=${docker_workdir%%*(/)}/${{ inputs.flows-directory }}
         kwargs_compressed=$(echo '${{ steps.parse-docker-storage-kwargs.outputs.result }}' | jq -c)
+        base_image=$(echo '${{ steps.parse-docker-storage-kwargs.outputs.result }}' | jq -r '.base_image')
+        docker_workdir=$(docker image inspect $base_image | jq -r '.[].Config.WorkingDir')
+        flows_dir=${docker_workdir%%*(/)}/${{ inputs.flows-directory }}
 
         docker run --rm \
           -v "${{ github.action_path }}/docker_deploy.py:${docker_workdir%%*(/)}/docker_deploy.py" \
