@@ -9,21 +9,8 @@ inputs:
   project-name:
     description: Prefect project name
     required: true
-  create-project:
-    description: Whether to create project if it does not exist
-    default: "false"
-    required: true
-  project-description:
-    description: A description of the project to be used when creating it
-    required: false
-  base-image:
-    description: The base Docker image of Prefect to be used. Can be a local or remote Docker image.
-    required: true
-  docker-registry-url:
-    description: Docker registry URL
-    required: true
-  docker-registry-image:
-    description: Docker registry output image
+  docker-storage-kwargs:
+    description: Docker storage kwargs. Refer https://docs.prefect.io/api/latest/storage.html#docker
     required: true
   flows-directory:
     description: The directory of the Python scripts that have Flow contexts. Default is "."
@@ -40,24 +27,27 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Parse docker-storage-kwargs YAML
+      id: parse-docker-storage-kwargs
+      uses: mikefarah/yq@master
+      with:
+        cmd: echo '${{ inputs.docker-storage-kwargs }}' | yq -o=json eval '.' -
+
     - name: Dockerize and register Prefect flows
       shell: bash
       run: |
         docker_workdir=$(docker image inspect ${{ inputs.base-image }} | jq -r '.[].Config.WorkingDir')
         flows_dir=${docker_workdir%%*(/)}/${{ inputs.flows-directory }}
-        is_create_project=$([[ "${{ inputs.create-project }}" == "true" ]] && echo --create-project || echo)
+        kwargs_compressed=$(echo '${{ steps.parse-docker-storage-kwargs.outputs.result }}' | jq -c)
 
         docker run --rm \
           -v "${{ github.action_path }}/docker_deploy.py:${docker_workdir%%*(/)}/docker_deploy.py" \
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v /home/runner/.docker/:/root/.docker/ \
           -e PREFECT__CLOUD__API_KEY=$PREFECT__CLOUD__API_KEY \
-          -e PREFECT__CLOUD__USE_LOCAL_SECRETS=false \
+          -e PREFECT__CLOUD__USE_LOCAL_SECRETS=$PREFECT__CLOUD__USE_LOCAL_SECRETS \
           ${{ inputs.base-image }} python docker_deploy.py \
-            $is_create_project \
             --schedule \
             --project ${{ inputs.project-name }} \
             --path $flows_dir \
-            --base-image ${{ inputs.base-image }} \
-            --docker-registry-url ${{ inputs.docker-registry-url }} \
-            --docker-registry-image ${{ inputs.docker-registry-image }}
+            --docker-storage-kwargs "$kwargs_compressed"

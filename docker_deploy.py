@@ -1,5 +1,6 @@
+import json
 from collections import Counter
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import prefect
 from prefect.cli.build_register import (
@@ -26,23 +27,15 @@ def get_default_run_config(labels: List[str] = [], job_template_path: Optional[s
     )
 
 
-def get_default_storage(script_path: str, base_image: str, registry_url: str, registry_image: str):
-    return Docker(registry_url=registry_url,
-                  image_name=registry_image,
-                  base_image=base_image,
-                  local_image=True,
-                  stored_as_script=True,
-                  path=script_path)
+def get_default_storage(path: str, **storage_kwargs):
+    return Docker(stored_as_script=True, path=path, **storage_kwargs)
 
 
-def build_dockerized_flows(flows: List[FlowLike], dask: bool, script_path: str, registry_url: str, registry_image: str, base_image: str):
+def build_dockerized_flows(flows: List[FlowLike], dask: bool, path: str, storage_kwargs: Any):
     for flow in flows:
         flow.validate()
         flow.run_config = get_default_run_config(dask)
-        flow.storage = get_default_storage(script_path=script_path,
-                                           base_image=base_image,
-                                           registry_url=registry_url,
-                                           registry_image=registry_image)
+        flow.storage = get_default_storage(path=path, **storage_kwargs)
         flow.executor = get_default_executor()
 
 
@@ -50,12 +43,8 @@ def build_dockerized_flows(flows: List[FlowLike], dask: bool, script_path: str, 
 # the schedule param has been introduced since Prefect v15.2.0
 @click.command()
 @click.option("--project", help="The name of the Prefect project to register this flow in. Required.")
-@click.option("--create-project", help="Whether to create project if it does not exist", default=False, is_flag=True)
-@click.option("--project-description", help="A description of the project to be used when creating it.")
 @click.option("--dask", help="Whether to use the Dask executor.", default=False, is_flag=True)
-@click.option("--base-image", help="Docker base image")
-@click.option("--docker-registry-url", help="Docker registry URL")
-@click.option("--docker-registry-image", help="Docker registry output image")
+@click.option("--docker-storage-kwargs", help="Docker storage kwargs")
 @click.option(
     "--path",
     "-p",
@@ -91,14 +80,10 @@ def register(
     project: str,
     paths: List[str],
     modules: List[str],
-    base_image: str,
-    docker_registry_url: str,
-    docker_registry_image: str,
+    docker_storage_kwargs: str,
     json_paths: List[str] = [],
     names: List[str] = [],
     labels: List[str] = [],
-    project_description: str = None,
-    create_project: bool = False,
     force: bool = False,
     schedule: bool = True,
     dask: bool = False,
@@ -121,11 +106,18 @@ def register(
         - schedule (bool, optional): If `True` (default) activates the flow schedule
             upon registering.
     """
-    client = prefect.Client()
+    # Validate docker_storage_kwargs
+    docker_storage_kwargs_json = json.loads(docker_storage_kwargs)
+    if 'base_image' not in docker_storage_kwargs_json:
+        raise TerminalError(
+            "docker_storage_kwargs must contain a base_image key"
+        )
+    if 'registry_url' not in docker_storage_kwargs_json or 'image_name' not in docker_storage_kwargs_json:
+        raise TerminalError(
+            "docker_storage_kwargs must contain both registry_url and image_name key"
+        )
 
-    # Create project if it does not exist
-    if create_project:
-        project_create.callback(project, project_description, True)
+    client = prefect.Client()
 
     # Determine the project id
     project_id = get_project_id(client, project)
@@ -145,10 +137,7 @@ def register(
         click.secho(f"Processing {source.location!r}:", fg="yellow")
 
         # Major extension to register_internal goes here
-        build_dockerized_flows(flows, dask, script_path=source.location,
-                               base_image=base_image,
-                               registry_image=docker_registry_image,
-                               registry_url=docker_registry_url)
+        build_dockerized_flows(flows, dask, path=source.location, storage_kwargs=docker_storage_kwargs_json)
 
         stats += build_and_register(
             client, flows, project_id, labels=labels, force=force, schedule=schedule
