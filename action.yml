@@ -47,7 +47,7 @@ runs:
           -v /home/runner/.docker/:/root/.docker/ \
           -e PREFECT__CLOUD__API_KEY=$PREFECT__CLOUD__API_KEY \
           -e PREFECT__CLOUD__USE_LOCAL_SECRETS=$PREFECT__CLOUD__USE_LOCAL_SECRETS \
-          ${{ inputs.base-image }} python docker_deploy.py \
+          $base_image python docker_deploy.py \
             --schedule \
             --project ${{ inputs.project-name }} \
             --path $flows_dir \
