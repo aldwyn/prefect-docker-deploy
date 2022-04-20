@@ -33,9 +33,9 @@ def get_default_storage(path: str, **storage_kwargs):
 def build_dockerized_flows(flows: List[FlowLike], dask_address: Optional[str], path: str, storage_kwargs: Any):
     for flow in flows:
         flow.validate()
-        flow.run_config = get_default_run_config(dask_address)
+        flow.run_config = get_default_run_config()
         flow.storage = get_default_storage(path=path, **storage_kwargs)
-        flow.executor = get_default_executor()
+        flow.executor = get_default_executor(dask_address)
 
 
 # modified version of prefect.cli.build_register.register_internal
