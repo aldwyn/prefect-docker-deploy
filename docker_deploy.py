@@ -7,15 +7,14 @@ from prefect.cli.build_register import (
     click, TerminalError, FlowLike,
     get_project_id, expand_paths, collect_flows, build_and_register
 )
-from prefect.cli.create import project as project_create
 from prefect.executors import DaskExecutor, LocalExecutor
 from prefect.run_configs import KubernetesRun
 from prefect.storage import Docker
 
 
-def get_default_executor(dask=False):
-    if dask:
-        return DaskExecutor(address="tcp://dask-scheduler:8786")
+def get_default_executor(dask_address=False):
+    if dask_address:
+        return DaskExecutor(address=dask_address)
     else:
         return LocalExecutor()
 
@@ -31,10 +30,10 @@ def get_default_storage(path: str, **storage_kwargs):
     return Docker(stored_as_script=True, path=path, **storage_kwargs)
 
 
-def build_dockerized_flows(flows: List[FlowLike], dask: bool, path: str, storage_kwargs: Any):
+def build_dockerized_flows(flows: List[FlowLike], dask_address: Optional[str], path: str, storage_kwargs: Any):
     for flow in flows:
         flow.validate()
-        flow.run_config = get_default_run_config(dask)
+        flow.run_config = get_default_run_config(dask_address)
         flow.storage = get_default_storage(path=path, **storage_kwargs)
         flow.executor = get_default_executor()
 
@@ -43,7 +42,7 @@ def build_dockerized_flows(flows: List[FlowLike], dask: bool, path: str, storage
 # the schedule param has been introduced since Prefect v15.2.0
 @click.command()
 @click.option("--project", help="The name of the Prefect project to register this flow in. Required.")
-@click.option("--dask", help="Whether to use the Dask executor.", default=False, is_flag=True)
+@click.option("--dask-address", help="The Kubernetes-bound dask executor address")
 @click.option("--docker-storage-kwargs", help="Docker storage kwargs")
 @click.option(
     "--path",
@@ -82,6 +81,7 @@ def register(
     modules: List[str],
     docker_storage_kwargs: str,
     json_paths: List[str] = [],
+    dask_address: str = None,
     names: List[str] = [],
     labels: List[str] = [],
     force: bool = False,
@@ -137,7 +137,7 @@ def register(
         click.secho(f"Processing {source.location!r}:", fg="yellow")
 
         # Major extension to register_internal goes here
-        build_dockerized_flows(flows, dask, path=source.location, storage_kwargs=docker_storage_kwargs_json)
+        build_dockerized_flows(flows, dask_address, path=source.location, storage_kwargs=docker_storage_kwargs_json)
 
         stats += build_and_register(
             client, flows, project_id, labels=labels, force=force, schedule=schedule
