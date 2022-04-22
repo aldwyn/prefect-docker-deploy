@@ -2,6 +2,7 @@ import json
 from collections import Counter
 from typing import Any, List, Optional
 
+import box
 import prefect
 from prefect.cli.build_register import (
     click, TerminalError, FlowLike,
@@ -12,7 +13,7 @@ from prefect.run_configs import KubernetesRun
 from prefect.storage import Docker
 
 
-def get_default_executor(dask_address=False):
+def get_default_executor(dask_address):
     if dask_address:
         return DaskExecutor(address=dask_address)
     else:
@@ -28,14 +29,6 @@ def get_default_run_config(labels: List[str] = [], job_template_path: Optional[s
 
 def get_default_storage(path: str, **storage_kwargs):
     return Docker(stored_as_script=True, path=path, **storage_kwargs)
-
-
-def build_dockerized_flows(flows: List[FlowLike], dask_address: Optional[str], path: str, storage_kwargs: Any):
-    for flow in flows:
-        flow.validate()
-        flow.run_config = get_default_run_config()
-        flow.storage = get_default_storage(path=path, **storage_kwargs)
-        flow.executor = get_default_executor(dask_address)
 
 
 # modified version of prefect.cli.build_register.register_internal
@@ -86,7 +79,6 @@ def register(
     labels: List[str] = [],
     force: bool = False,
     schedule: bool = True,
-    dask: bool = False,
 ) -> None:
     """Do multiple registration pass, loading, building, and registering the
     requested flows.
@@ -130,6 +122,8 @@ def register(
     click.echo("Collecting flows...")
     source_to_flows = collect_flows(expanded_paths, modules, json_paths, names=names)
 
+    serialized_flows = {}
+
     # Iterate through each file, building all storage and registering all flows
     # Log errors as they happen, but only exit once all files have been processed
     stats = Counter(registered=0, errored=0, skipped=0)
@@ -137,7 +131,17 @@ def register(
         click.secho(f"Processing {source.location!r}:", fg="yellow")
 
         # Major extension to register_internal goes here
-        build_dockerized_flows(flows, dask_address, path=source.location, storage_kwargs=docker_storage_kwargs_json)
+        for flow in flows:
+            click.echo(f"  Replacing configs for {flow.name!r}...")
+            if isinstance(flow, box.Box):
+                serialized_flow = flow
+            else:
+                serialized_flow = flow.serialize(build=False)
+            serialized_flows[flow.name] = serialized_flow
+            
+            flow.run_config = get_default_run_config()
+            flow.storage = get_default_storage(path=source.location, **docker_storage_kwargs_json)
+            flow.executor = get_default_executor(dask_address)
 
         stats += build_and_register(
             client, flows, project_id, labels=labels, force=force, schedule=schedule
@@ -157,6 +161,14 @@ def register(
     bar_length = max(60 - len(click.unstyle(msg)), 4) // 2
     bar = "=" * bar_length
     click.echo(f"{bar} {msg} {bar}")
+
+    # Write output file
+    output = "tmp/flows.json"
+    click.echo(f"Writing output to {output!r}")
+    flows = [serialized_flows[name] for name in sorted(serialized_flows)]
+    obj = {"version": 1, "flows": flows}
+    with open(output, "w") as fil:
+        json.dump(obj, fil, sort_keys=True)
 
     # If not in a watch call, exit with appropriate exit code
     if stats["errored"]:
