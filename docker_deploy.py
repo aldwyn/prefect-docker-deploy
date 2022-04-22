@@ -133,15 +133,17 @@ def register(
         # Major extension to register_internal goes here
         for flow in flows:
             click.echo(f"  Replacing configs for {flow.name!r}...")
+            
+            flow.run_config = get_default_run_config()
+            flow.storage = get_default_storage(path=source.location, **docker_storage_kwargs_json)
+            flow.executor = get_default_executor(dask_address)
+            
+            # Serialize for the output flows.json
             if isinstance(flow, box.Box):
                 serialized_flow = flow
             else:
                 serialized_flow = flow.serialize(build=False)
             serialized_flows[flow.name] = serialized_flow
-            
-            flow.run_config = get_default_run_config()
-            flow.storage = get_default_storage(path=source.location, **docker_storage_kwargs_json)
-            flow.executor = get_default_executor(dask_address)
 
         stats += build_and_register(
             client, flows, project_id, labels=labels, force=force, schedule=schedule
