@@ -8,16 +8,8 @@ from prefect.cli.build_register import (
     click, TerminalError, FlowLike,
     get_project_id, expand_paths, collect_flows, build_and_register
 )
-from prefect.executors import DaskExecutor, LocalExecutor
 from prefect.run_configs import KubernetesRun
 from prefect.storage import Docker
-
-
-def get_default_executor(dask_address):
-    if dask_address:
-        return DaskExecutor(address=dask_address)
-    else:
-        return LocalExecutor()
 
 
 def get_default_run_config(labels: List[str] = [], job_template_path: Optional[str] = None):
@@ -35,7 +27,6 @@ def get_default_storage(path: str, **storage_kwargs):
 # the schedule param has been introduced since Prefect v15.2.0
 @click.command()
 @click.option("--project", help="The name of the Prefect project to register this flow in. Required.")
-@click.option("--dask-address", help="The Kubernetes-bound dask executor address")
 @click.option("--docker-storage-kwargs", help="Docker storage kwargs")
 @click.option(
     "--path",
@@ -74,7 +65,6 @@ def register(
     modules: List[str],
     docker_storage_kwargs: str,
     json_paths: List[str] = [],
-    dask_address: str = None,
     names: List[str] = [],
     labels: List[str] = [],
     force: bool = False,
@@ -133,11 +123,10 @@ def register(
         # Major extension to register_internal goes here
         for flow in flows:
             click.echo(f"  Replacing configs for {flow.name!r}...")
-            
+
             flow.run_config = get_default_run_config()
             flow.storage = get_default_storage(path=source.location, **docker_storage_kwargs_json)
-            flow.executor = get_default_executor(dask_address)
-            
+
             # Serialize for the output flows.json
             if isinstance(flow, box.Box):
                 serialized_flow = flow

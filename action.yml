@@ -16,9 +16,6 @@ inputs:
     description: The directory of the Python scripts that have Flow contexts. Default is "."
     required: true
     default: "."
-  dask-address:
-    description: The address of the Kubernetes-bound Dask scheduler.
-    required: false
   # k8s-job-template-path:
   #   description: Kubernetes Job template path
   #   required: false
@@ -51,7 +48,6 @@ runs:
             --schedule \
             --project ${{ inputs.project-name }} \
             --path $flows_dir \
-            --dask-address ${{ inputs.dask-address }} \
             --docker-storage-kwargs "$kwargs_compressed"
 
     - uses: actions/upload-artifact@v3
